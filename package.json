@@ -1,0 +1,39 @@
+{
+  "name": "claude2grokbot",
+  "version": "0.1.0",
+  "description": "Let Claude (or any MCP client) wake an executor agent that isn't running, hand it tasks, and collect results. Cloudflare Worker + Durable Object, zero runtime dependencies.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5",
+    "typescript": "^5.6.0 || ^6.0.0",
+    "wrangler": "^4"
+  },
+  "cloudflare": {
+    "bindings": {
+      "MCP_TOKENS": {
+        "description": "Bearer token(s) for MCP clients such as Claude Code. Generate with `openssl rand -hex 32`. Separate several with commas."
+      },
+      "EXECUTOR_KEY": {
+        "description": "Key your executor uses to claim tasks. Generate with `openssl rand -hex 32`."
+      },
+      "OWNER_PASSWORD": {
+        "description": "Long password for the OAuth consent screen (needed for claude.ai). At least 12 characters."
+      },
+      "WAKE_URL": {
+        "description": "Executor wake webhook URL, e.g. the Grok Bot routine webhook **POST to** URL. Use `none` for poll-only."
+      },
+      "WAKE_SECRET": {
+        "description": "Wake webhook credential, e.g. the Grok Bot routine webhook **key**."
+      }
+    }
+  }
+}

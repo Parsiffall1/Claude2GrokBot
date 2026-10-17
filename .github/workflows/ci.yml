@@ -1,0 +1,47 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dev dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests (Bun + in-memory Workers shim; runs relay.py and relay.sh for real)
+        run: bun test
+      - name: Bundle check (no deploy)
+        run: npx wrangler deploy --dry-run --outdir dist
+      - name: No secrets committed
+        run: |
+          ! git ls-files | grep -E '(^|/)(\.env|\.dev\.vars|executor\.env)$'
+      - name: Shell and Python syntax
+        run: |
+          for f in install.sh scripts/*.sh executor-kit/*.sh; do bash -n "$f"; done
+          python3 -m py_compile executor-kit/relay.py
+
+  release:
+    # A pushed version tag publishes the skill zip that install.sh downloads (releases/latest).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the skill zip
+        run: scripts/package-skill.sh
+      - name: Publish the release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "Claude2GrokBot skill. Install: curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | bash"
+          gh release upload "$GITHUB_REF_NAME" dist/claude2grokbot-skill.zip --clobber

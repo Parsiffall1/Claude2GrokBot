@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "claude2grokbot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+
+  // Bundle the executor kit (relay.py, Grok Bot skill, installer) as text so /kit/* serves the deployed version.
+  "rules": [{ "type": "Text", "globs": ["**/*.py", "**/*.md", "**/*.sh"], "fallthrough": true }],
+
+  // One SQLite-backed Durable Object holds the task queue, OAuth state and timers.
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "TaskHub" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TaskHub"] }],
+
+  // Safety net for timers (the Durable Object alarm does the real scheduling).
+  "triggers": { "crons": ["*/30 * * * *"] },
+
+  // Non-secret settings. Secrets (tokens, keys, URLs with keys) go in `wrangler secret put`, never here.
+  "vars": {
+    "DEFAULT_EXECUTOR": "default",
+    "WAKE_AUTH": "bearer",
+    "LEASE_SECONDS": "1800",
+    "WAKE_MAX_ATTEMPTS": "4",
+    "REWAKE_AFTER_SECONDS": "900",
+    "WAKE_COALESCE_SECONDS": "60",
+    "ACCESS_TOKEN_TTL_SECONDS": "3600",
+    "RETENTION_DAYS": "30"
+  },
+
+  "observability": { "enabled": true }
+}
